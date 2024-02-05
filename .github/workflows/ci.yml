@@ -1,0 +1,29 @@
+name: Ruby CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:alpine
+        ports: ["6379:6379"]
+    strategy:
+      fail-fast: false
+      matrix:
+        ruby-version: ['3.2', '3.1']
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Ruby ${{ matrix.ruby-version }}
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: ${{ matrix.ruby-version }}
+      - name: Install dependencies
+        run: bundle install
+      - name: Run tests
+        run: bundle exec rspec spec
