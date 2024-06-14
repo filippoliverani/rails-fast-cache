@@ -5,18 +5,12 @@ require 'active_support'
 require 'active_support/core_ext'
 
 require_relative 'brotli_compressor'
+require_relative 'scheduler'
 require_relative 'write_job'
 require_relative 'write_multi_job'
 
 module RailsFastCache
   class Store < ::ActiveSupport::Cache::Store
-    DEFAULT_EXECUTOR_OPTIONS = {
-      min_threads: ENV.fetch('RAILS_MAX_THREADS', 3).to_i,
-      max_threads: ENV.fetch('RAILS_MAX_THREADS', 3).to_i,
-      max_queue: 100,
-      fallback_policy: :caller_runs
-    }.freeze
-
     delegate(
       :cleanup,
       :clear,
@@ -34,11 +28,17 @@ module RailsFastCache
       :read,
       :read_multi,
       :silence!,
-      to: :@store
+      to: :@cache_store
     )
+
+    cattr_accessor :cache_store
 
     def self.supports_cache_versioning?
       true
+    end
+
+    def self.shutdown
+      RailsFastCache::Scheduler.shutdown
     end
 
     def initialize(cache_store, *parameters)
@@ -46,22 +46,22 @@ module RailsFastCache
       options[:compressor] ||= RailsFastCache::BrotliCompressor if !options.key?(:coder) && cache_store != :memory_store
       options[:serializer] ||= :message_pack unless options.key?(:coder)
 
-      @queue = ActiveJob::QueueAdapters::AsyncAdapter.new(
-        **DEFAULT_EXECUTOR_OPTIONS.merge(*options.delete(:executor))
-      )
-      @store = ActiveSupport::Cache.lookup_store(cache_store, *parameters, **options)
+      @cache_store = ActiveSupport::Cache.lookup_store(cache_store, *parameters, **options)
+      self.class.cache_store = @cache_store
     end
 
     def write(name, value, options = nil)
-      @queue.enqueue(WriteJob.perform_later(@store, name, value, options))
+      WriteJob.perform_later(@cache_store,name, value, options)
+      true
     end
 
     def write_multi(hash, options = nil)
-      @queue.enqueue(WriteMultiJob.perform_later(@store, hash, options))
+      WriteMultiJob.perform_later(@cache_store, hash, options)
+      true
     end
 
-    def shutdown(wait: true)
-      @queue.shutdown(wait:)
+    def shutdown
+      self.class.shutdown
     end
   end
 end
