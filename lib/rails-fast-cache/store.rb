@@ -37,6 +37,10 @@ module RailsFastCache
       to: :@store
     )
 
+    def self.supports_cache_versioning?
+      true
+    end
+
     def initialize(cache_store, *parameters)
       options = parameters.extract_options!
       options[:compressor] ||= RailsFastCache::BrotliCompressor if !options.key?(:coder) && cache_store != :memory_store
