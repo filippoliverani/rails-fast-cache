@@ -30,6 +30,7 @@ module RailsFastCache
       :silence!,
       to: :@cache_store
     )
+    delegate_missing_to :@cache_store
 
     cattr_accessor :cache_store
 
@@ -51,7 +52,7 @@ module RailsFastCache
     end
 
     def write(name, value, options = nil)
-      WriteJob.perform_later(@cache_store,name, value, options)
+      WriteJob.perform_later(@cache_store, name, value, options)
       true
     end
 
