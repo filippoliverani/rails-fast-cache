@@ -46,6 +46,40 @@ describe RailsFastCache::Store do
     test_write(cache_store)
   end
 
+  describe '#options' do
+    it 'reflects options passed to the underlying cache store' do
+      store = RailsFastCache::Store.new(:memory_store, expires_in: 42)
+
+      expect(store.options[:expires_in]).to eq(42)
+    end
+  end
+
+  describe '#silence?' do
+    it 'reflects the underlying cache store mute state' do
+      store = RailsFastCache::Store.new(:memory_store)
+
+      store.mute { expect(store.silence?).to be true }
+      expect(store.silence?).to be_falsy
+    end
+  end
+
+  describe '#namespace' do
+    it 'reflects the namespace passed to the underlying cache store' do
+      store = RailsFastCache::Store.new(:memory_store, namespace: 'test_ns')
+
+      expect(store.namespace).to eq('test_ns')
+    end
+  end
+
+  describe '#read_counter and #write_counter' do
+    it 'delegates counter operations to the underlying cache store' do
+      store = RailsFastCache::Store.new(:memory_store)
+      store.write_counter('store_spec_counter', 1)
+
+      expect(store.read_counter('store_spec_counter')).to eq(1)
+    end
+  end
+
   def initialize_store(cache_store)
     store = RailsFastCache::Store.new(*cache_store)
     store.delete_matched('store_spec_*')

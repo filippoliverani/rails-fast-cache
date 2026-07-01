@@ -22,12 +22,17 @@ module RailsFastCache
       :fetch,
       :fetch_multi,
       :increment,
-      :key_matcher,
       :mute,
-      :new,
+      :namespace,
+      :namespace=,
+      :options,
       :read,
+      :read_counter,
       :read_multi,
+      :silence,
       :silence!,
+      :silence?,
+      :write_counter,
       to: :@cache_store
     )
     delegate_missing_to :@cache_store
