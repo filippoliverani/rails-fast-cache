@@ -65,11 +65,11 @@ module RailsFastCache
     end
 
     def write_serialized_entry(...)
-      @cache_store.send(:write_serialized_entry)
+      @cache_store.send(:write_serialized_entry, ...)
     end
 
     def read_serialized_entry(...)
-      @cache_store.send(:read_serialized_entry)
+      @cache_store.send(:read_serialized_entry, ...)
     end
   end
 end
