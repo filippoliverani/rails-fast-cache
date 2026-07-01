@@ -18,7 +18,7 @@ Gem::Specification.new do |s|
   s.test_files = `git ls-files spec`.split($RS)
   s.require_paths = ['lib']
 
-  s.add_runtime_dependency 'activejob', '>= 7.1'
+  s.add_runtime_dependency 'concurrent-ruby', '>= 1.1'
   s.add_runtime_dependency 'activesupport', '>= 7.1'
   s.add_runtime_dependency 'brotli', '>= 0.4'
   s.add_runtime_dependency 'msgpack', '>= 1.7'

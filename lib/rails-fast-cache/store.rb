@@ -1,13 +1,11 @@
 # frozen_string_literal: true
 
-require 'active_job'
 require 'active_support'
 require 'active_support/core_ext'
 
+require_relative 'async_writes'
 require_relative 'brotli_compressor'
 require_relative 'scheduler'
-require_relative 'write_job'
-require_relative 'write_multi_job'
 
 module RailsFastCache
   class Store < ::ActiveSupport::Cache::Store
@@ -32,19 +30,15 @@ module RailsFastCache
       :silence,
       :silence!,
       :silence?,
+      :write,
       :write_counter,
+      :write_multi,
       to: :@cache_store
     )
     delegate_missing_to :@cache_store
 
-    cattr_accessor :cache_store
-
     def self.supports_cache_versioning?
       true
-    end
-
-    def self.shutdown
-      RailsFastCache::Scheduler.shutdown
     end
 
     def initialize(cache_store, *parameters)
@@ -53,21 +47,29 @@ module RailsFastCache
       options[:serializer] ||= :message_pack unless options.key?(:coder)
 
       @cache_store = ActiveSupport::Cache.lookup_store(cache_store, *parameters, **options)
-      self.class.cache_store = @cache_store
+      @scheduler = RailsFastCache::Scheduler.new
+
+      unless @cache_store.singleton_class.include?(RailsFastCache::AsyncWrites)
+        @cache_store.singleton_class.prepend(RailsFastCache::AsyncWrites)
+      end
+      @cache_store.rails_fast_cache_scheduler = @scheduler
+      @cache_store.rails_fast_cache_logger = @cache_store.logger
     end
 
-    def write(name, value, options = nil)
-      WriteJob.perform_later(@cache_store, name, value, options)
-      true
-    end
-
-    def write_multi(hash, options = nil)
-      WriteMultiJob.perform_later(@cache_store, hash, options)
-      true
+    def flush(timeout = nil)
+      @scheduler.flush(timeout)
     end
 
     def shutdown
-      self.class.shutdown
+      @scheduler.shutdown(wait: true)
+    end
+
+    def write_serialized_entry(...)
+      @cache_store.send(:write_serialized_entry)
+    end
+
+    def read_serialized_entry(...)
+      @cache_store.send(:read_serialized_entry)
     end
   end
 end
